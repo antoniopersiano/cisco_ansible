@@ -1,0 +1,24 @@
+---
+- name: Configure Cisco Router
+  hosts: router1
+  gather_facts: no
+  connection: network_cli
+  vars:
+    ansible_network_os: ios  # Specify Cisco OS
+  tasks:
+    - name: Set hostname on the router
+      cisco.ios.ios_config:
+        lines:
+          - hostname {{ inventory_hostname }}
+
+    - name: Add Entry to ACL 101
+      cisco.ios.ios_config:
+        parents:  
+          - ip access-list extended 100
+        
+        lines:
+         - 12 permit tcp host 192.168.100.10 eq 4443 any
+
+        match: exact # Ensure exact line matching
+        replace: line  # Save configuration only if changes are made
+        save_when: modified  # Save configuration only if changes are made  

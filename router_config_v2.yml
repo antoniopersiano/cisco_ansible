@@ -1,4 +1,3 @@
----
 - name: Configure Cisco Router
   hosts: router1
   gather_facts: no
@@ -6,19 +5,31 @@
   vars:
     ansible_network_os: ios  # Specify Cisco OS
   tasks:
-    - name: Set hostname on the router
+    - name: Add Entry to ACL 100
       cisco.ios.ios_config:
         lines:
-          - hostname {{ inventory_hostname }}
-
-    - name: Add Entry to ACL 101
-      cisco.ios.ios_config:
-        parents:  
           - ip access-list extended 100
-        
-        lines:
-         - 12 permit tcp host 192.168.100.10 eq 4443 any
+          - 12 permit tcp host 192.168.100.10 eq 4443 any
+        match: exact  # Ensure exact line matching
+        replace: line  # Only replace if changes are made
+        save_when: modified  # Save configuration if modified
 
-        match: exact # Ensure exact line matching
-        replace: line  # Save configuration only if changes are made
-        save_when: modified  # Save configuration only if changes are made  
+- name: Backup Cisco IOS Configuration
+  hosts: router1
+  gather_facts: no
+  connection: network_cli
+  vars:
+    ansible_network_os: ios  # Specify Cisco OS
+    current_time: "{{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"  # Get current date and time
+  tasks:
+    - name: Backup IOS Configuration
+      cisco.ios.ios_command:
+        commands:
+          - show running-config
+      register: config_output  # Register output from this task
+
+    - name: Save Backup to File
+      copy:
+        content: "{{ config_output.stdout[0] }}"
+        dest: "/home/antonio/{{ inventory_hostname }}_backup_{{ current_time }}.cfg"
+
